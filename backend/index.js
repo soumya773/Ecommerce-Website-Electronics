@@ -9,8 +9,20 @@ const stripeWebhook = require("./controller/order/webhook");
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://ecommerce-website-electronics.vercel.app",
+  "https://ecommerce-website-electronics-c8kbrsxf1.vercel.app",
+];
+
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
