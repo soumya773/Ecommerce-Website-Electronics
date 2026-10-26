@@ -15,11 +15,35 @@ const allowedOrigins = [
   "https://ecommerce-website-electronics-c8kbrsxf1.vercel.app",
 ];
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+
+  // Exact trusted origins.
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  try {
+    const url = new URL(origin);
+
+    // Allow HTTPS Vercel preview deployments for your Vercel team.
+    // Example: ecommerce-website-electron-git-....-soumyas-projects-dbbe300.vercel.app
+    const isTrustedVercelPreview =
+      url.protocol === "https:" &&
+      url.hostname.endsWith(".vercel.app") &&
+      url.hostname.includes("-soumyas-projects-");
+
+    return isTrustedVercelPreview;
+  } catch {
+    return false;
+  }
+};
+
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: (origin, callback) => {
     console.log("Incoming request origin:", origin || "(no origin)");
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
       console.error("Rejected CORS origin:", origin);
@@ -31,21 +55,18 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
-// CORS must run before database middleware and API routes.
+// CORS must run before API routes and database middleware.
 app.use(cors(corsOptions));
-
-// Explicitly handle browser preflight requests.
 app.options(/.*/, cors(corsOptions));
 
-// Stripe requires the original raw request bytes for signature verification.
-// Keep this route before express.json().
+// Stripe webhook must receive the original raw request body.
 app.post(
   "/api/webhook",
   express.raw({ type: "application/json" }),
   stripeWebhook,
 );
 
-// Parse request bodies and cookies.
+// Parse JSON and cookies for normal API requests.
 app.use(express.json());
 app.use(cookieParser());
 
@@ -57,7 +78,7 @@ app.use(async (req, res, next) => {
   } catch (error) {
     console.error("Database connection failed:", error.message);
 
-    res.status(503).json({
+    return res.status(503).json({
       success: false,
       message: "Database temporarily unavailable.",
     });
