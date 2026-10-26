@@ -16,17 +16,14 @@ const allowedOrigins = [
 ];
 
 function isAllowedOrigin(origin) {
-  // Allow requests without an Origin header.
   if (!origin) return true;
 
-  // Allow known production and local origins.
   if (allowedOrigins.includes(origin)) return true;
 
   try {
     const url = new URL(origin);
     const hostname = url.hostname;
 
-    // Allow HTTPS preview deployments belonging to this Vercel project.
     return (
       url.protocol === "https:" &&
       hostname.endsWith(".vercel.app") &&
@@ -49,10 +46,10 @@ const corsOptions = {
     console.error("Rejected CORS origin:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
-
-  credentials: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 204,
 };
 
 // CORS must run before routes and database middleware.
