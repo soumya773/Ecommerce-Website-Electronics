@@ -15,83 +15,61 @@ const allowedOrigins = [
   "https://ecommerce-website-electronics-c8kbrsxf1.vercel.app",
 ];
 
-const isAllowedOrigin = (origin) => {
+function isAllowedOrigin(origin) {
+  // Allow requests without an Origin header.
   if (!origin) return true;
 
-  // Exact trusted origins.
-  if (allowedOrigins.includes(origin)) {
-    return true;
-  }
+  // Allow known production and local origins.
+  if (allowedOrigins.includes(origin)) return true;
 
   try {
     const url = new URL(origin);
+    const hostname = url.hostname;
 
-    // Allow HTTPS Vercel preview deployments for your Vercel team.
-    // Example: ecommerce-website-electron-git-....-soumyas-projects-dbbe300.vercel.app
-    const isTrustedVercelPreview =
+    // Allow HTTPS preview deployments belonging to this Vercel project.
+    return (
       url.protocol === "https:" &&
-      url.hostname.endsWith(".vercel.app") &&
-      url.hostname.includes("-soumyas-projects-");
-
-    return isTrustedVercelPreview;
+      hostname.endsWith(".vercel.app") &&
+      hostname.startsWith("ecommerce-website-electron-git-") &&
+      hostname.includes("-soumyas-projects-dbbee300")
+    );
   } catch {
     return false;
   }
-};
+}
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests without an Origin header, such as server-to-server requests.
-    if (!origin) {
-      return callback(null, true);
-    }
+    console.log("Incoming request origin:", origin || "(no origin)");
 
-    let isAllowed = allowedOrigins.includes(origin);
-
-    // Also allow Vercel preview deployments for this project.
-    try {
-      const parsedOrigin = new URL(origin);
-
-      if (
-        parsedOrigin.protocol === "https:" &&
-        parsedOrigin.hostname.endsWith(".vercel.app") &&
-        /^ecommerce-website-electron-git-[a-z0-9-]+-soumyas-projects-dbbee300\.vercel\.app$/.test(
-          parsedOrigin.hostname,
-        )
-      ) {
-        isAllowed = true;
-      }
-    } catch (error) {
-      isAllowed = false;
-    }
-
-    if (isAllowed) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
     console.error("Rejected CORS origin:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
+
   credentials: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
-// CORS must run before API routes and database middleware.
+
+// CORS must run before routes and database middleware.
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-// Stripe webhook must receive the original raw request body.
+// Stripe requires the original, unparsed request body.
 app.post(
   "/api/webhook",
   express.raw({ type: "application/json" }),
   stripeWebhook,
 );
 
-// Parse JSON and cookies for normal API requests.
 app.use(express.json());
 app.use(cookieParser());
 
-// Connect to MongoDB before handling API requests.
+// Connect to MongoDB before processing API requests.
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -106,7 +84,6 @@ app.use(async (req, res, next) => {
   }
 });
 
-// API routes.
 app.use("/api", router);
 
 const PORT = process.env.PORT || 8080;
