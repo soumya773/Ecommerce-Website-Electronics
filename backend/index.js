@@ -54,6 +54,12 @@ const corsOptions = {
 
 // CORS must run before routes and database middleware.
 app.use(cors(corsOptions));
+app.use((req, res, next) => {
+  if (req.path === "/api/admin/order-status") {
+    console.log("ORDER STATUS REQUEST:", req.method, req.path);
+  }
+  next();
+});
 app.options(/.*/, cors(corsOptions));
 
 // Stripe requires the original, unparsed request body.
