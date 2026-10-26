@@ -40,21 +40,42 @@ const isAllowedOrigin = (origin) => {
 };
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    console.log("Incoming request origin:", origin || "(no origin)");
-
-    if (isAllowedOrigin(origin)) {
-      callback(null, true);
-    } else {
-      console.error("Rejected CORS origin:", origin);
-      callback(new Error("Not allowed by CORS"));
+  origin: function (origin, callback) {
+    // Allow requests without an Origin header, such as server-to-server requests.
+    if (!origin) {
+      return callback(null, true);
     }
+
+    let isAllowed = allowedOrigins.includes(origin);
+
+    // Also allow Vercel preview deployments for this project.
+    try {
+      const parsedOrigin = new URL(origin);
+
+      if (
+        parsedOrigin.protocol === "https:" &&
+        parsedOrigin.hostname.endsWith(".vercel.app") &&
+        /^ecommerce-website-electron-git-[a-z0-9-]+-soumyas-projects-dbbee300\.vercel\.app$/.test(
+          parsedOrigin.hostname,
+        )
+      ) {
+        isAllowed = true;
+      }
+    } catch (error) {
+      isAllowed = false;
+    }
+
+    if (isAllowed) {
+      return callback(null, true);
+    }
+
+    console.error("Rejected CORS origin:", origin);
+    return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
-
 // CORS must run before API routes and database middleware.
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
